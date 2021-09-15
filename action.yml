@@ -1,0 +1,69 @@
+name: 'maven-lib-workflow-generator'
+description: 'provides the templates for generating the maven based workflow'
+
+inputs:
+  token:
+    description: 'the token used to access the workflow repository'
+    required: true
+  target_folder:
+    description: 'the folder the templates are copied to'
+    required: true
+    default: 'templates'
+  tmp_folder:
+    description: 'a temporary folder used for internal processing, must not exist'
+    required: true
+    default: 'tmp_work'
+outputs:
+  workflow_version:
+    description: "the workflow version"
+    value: ${{ steps.set-output.outputs.workflow-version }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: check target_folder folder
+    shell: bash
+    run:
+      if [ -d $TARGET_FOLDER ]; then
+      echo "output folder $TARGET_FOLDER must not exist";
+      exit 1;
+      fi;
+    env:
+      TARGET_FOLDER: ${{ inputs.target_folder }}
+      
+  - name: check tmp_folder folder
+    shell: bash
+    run:
+      if [ -d $TMP_FOLDER ]; then
+      echo "output folder $TMP_FOLDER must not exist";
+      exit 1;
+      fi;
+    env:
+      TMP_FOLDER: ${{ inputs.tmp_folder }}
+      
+  - name: get template
+    shell: bash
+    run: 
+      git clone --depth 1 --branch $REPO_VERSION -c advice.detachedHead=false https://$GITHUB_ACTOR:$TOKEN@github.com/$REPO ${{inputs.tmp_folder}}
+    env:
+      TOKEN: ${{inputs.token}}
+      REPO: dvag/maven-lib-workflow-generator
+      REPO_VERSION: v0.0.1
+
+  - name: copy templates
+    shell: bash
+    run: |
+      mkdir $TARGET_FOLDER
+      cp $TMP_FOLDER/templates/* $TARGET_FOLDER
+      rm -rf $TMP_FOLDER
+    env:
+      TMP_FOLDER: ${{ inputs.tmp_folder }}
+      TARGET_FOLDER: ${{ inputs.target_folder }}
+      
+  - name: set output
+    id: set-output
+    shell: bash
+    run:
+      echo "::set-output name=workflow-version::$(echo $REPO_VERSION)"
+    env:
+      REPO_VERSION: v0.0.1
